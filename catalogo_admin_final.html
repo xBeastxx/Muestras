@@ -1,0 +1,215 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Catálogo - Administrador</title>
+    <style>
+        body {
+            font-family: 'Poppins', sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f8f9fa;
+            color: #333;
+        }
+        header {
+            background-color: #1d3557;
+            color: white;
+            text-align: center;
+            padding: 1.5rem;
+        }
+        header h1 {
+            margin: 0;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+        .admin-actions {
+            text-align: center;
+            margin-bottom: 1rem;
+        }
+        .admin-actions button {
+            background-color: #457b9d;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        .admin-actions button:hover {
+            background-color: #1d3557;
+        }
+        .product-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+        }
+        .product-card {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+        .product-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 15px rgba(0, 0, 0, 0.2);
+        }
+        .product-card img {
+            width: 100%;
+            height: 200px;
+            object-fit: contain;
+        }
+        .product-card-content {
+            padding: 1rem;
+            text-align: center;
+        }
+        .product-card h3 {
+            font-size: 1.2rem;
+            margin: 0.5rem 0;
+        }
+        .product-card button {
+            background-color: #e63946;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 5px;
+            cursor: pointer;
+            margin: 0.5rem;
+        }
+        .product-card button:hover {
+            background-color: #d62828;
+        }
+    </style>
+</head>
+<body>
+    <header>
+        <h1>Catálogo - Administrador</h1>
+    </header>
+
+    <div class="container">
+        <div class="admin-actions">
+            <button onclick="openAddProductModal()">Agregar Producto</button>
+        </div>
+        <div class="product-grid" id="product-grid"></div>
+    </div>
+
+    <!-- Modal para agregar y editar productos -->
+    <div id="product-modal" style="display: none; text-align: center;">
+        <h2 id="modal-title">Agregar Producto</h2>
+        <input type="text" id="product-title" placeholder="Título"><br><br>
+        <textarea id="product-description" placeholder="Descripción"></textarea><br><br>
+        <input type="file" id="product-image" accept="image/*"><br><br>
+        <input type="text" id="product-category" placeholder="Categoría"><br><br>
+        <button onclick="saveProduct()">Guardar</button>
+        <button onclick="closeModal()">Cancelar</button>
+    </div>
+
+    <script>
+        let editingProductId = null;
+
+        function loadProducts() {
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+            const productGrid = document.getElementById('product-grid');
+            productGrid.innerHTML = '';
+
+            products.forEach(product => {
+                const productCard = document.createElement('div');
+                productCard.className = 'product-card';
+
+                productCard.innerHTML = `
+                    <img src="${product.image}" alt="${product.title}">
+                    <div class="product-card-content">
+                        <h3>${product.title}</h3>
+                        <p>${product.description}</p>
+                        <button onclick="editProduct(${product.id})">Editar</button>
+                        <button onclick="deleteProduct(${product.id})">Eliminar</button>
+                    </div>
+                `;
+                productGrid.appendChild(productCard);
+            });
+        }
+
+        function openAddProductModal() {
+            editingProductId = null;
+            document.getElementById('modal-title').innerText = "Agregar Producto";
+            document.getElementById('product-title').value = "";
+            document.getElementById('product-description').value = "";
+            document.getElementById('product-image').value = "";
+            document.getElementById('product-category').value = "";
+            document.getElementById('product-modal').style.display = 'block';
+        }
+
+        function saveProduct() {
+            const title = document.getElementById('product-title').value;
+            const description = document.getElementById('product-description').value;
+            const category = document.getElementById('product-category').value;
+            const imageInput = document.getElementById('product-image');
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+
+            if (imageInput.files && imageInput.files[0]) {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const image = e.target.result;
+                    if (editingProductId === null) {
+                        // Agregar producto
+                        const newProduct = {
+                            id: products.length ? Math.max(...products.map(p => p.id)) + 1 : 1,
+                            title,
+                            description,
+                            image,
+                            category,
+                        };
+                        products.push(newProduct);
+                    } else {
+                        // Editar producto
+                        const product = products.find(p => p.id === editingProductId);
+                        if (product) {
+                            product.title = title;
+                            product.description = description;
+                            product.image = image;
+                            product.category = category;
+                        }
+                    }
+                    localStorage.setItem('products', JSON.stringify(products));
+                    closeModal();
+                    loadProducts();
+                };
+                reader.readAsDataURL(imageInput.files[0]);
+            } else {
+                alert("Por favor, selecciona una imagen.");
+            }
+        }
+
+        function closeModal() {
+            document.getElementById('product-modal').style.display = 'none';
+        }
+
+        function editProduct(productId) {
+            const products = JSON.parse(localStorage.getItem('products')) || [];
+            const product = products.find(p => p.id === productId);
+            if (!product) return;
+
+            editingProductId = productId;
+            document.getElementById('modal-title').innerText = "Editar Producto";
+            document.getElementById('product-title').value = product.title;
+            document.getElementById('product-description').value = product.description;
+            document.getElementById('product-category').value = product.category;
+            document.getElementById('product-modal').style.display = 'block';
+        }
+
+        function deleteProduct(productId) {
+            let products = JSON.parse(localStorage.getItem('products')) || [];
+            products = products.filter(p => p.id !== productId);
+            localStorage.setItem('products', JSON.stringify(products));
+            loadProducts();
+        }
+
+        window.onload = loadProducts;
+    </script>
+</body>
+</html>
